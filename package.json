@@ -1,0 +1,14 @@
+{
+  "name": "crelink-app",
+  "version": "1.0.0",
+  "description": "Aplikasi CreLink",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "pg": "^8.11.3"
+  },
+  "author": "",
+  "license": "ISC"
+}

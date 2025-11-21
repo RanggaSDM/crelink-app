@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CreLink - Hubungkan Skill Kreatifmu</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+    <div class="top-brand-bar">
+        <img src="images/logo-vinix.png" alt="VINIX7 Logo">
+    </div>
+
+    <div id="toast-container"></div>
+
+    <section id="landing-page" class="active-section">
+        <div class="landing-content">
+            <div class="landing-text">
+                <h1>CreLink</h1>
+                <h2>Hubungkan Skill Kreatifmu<br>dengan Industri Nyata</h2>
+                <p>Untuk mahasiswa dan freelance menemukan proyek kolaborasi, mentor ahli, dan pelatihan berkualitas di satu tempat.</p>
+                <button class="main-btn" onclick="goToLogin()" style="width: auto; padding: 15px 30px;">Cari Proyek Sekarang</button>
+            </div>
+            <div class="landing-image">
+                <img src="images/landing-hero.png" alt="Ilustrasi CreLink">
+            </div>
+        </div>
+        <div class="landing-footer">
+            <p>By CreLink &nbsp; | &nbsp; Version: 1.0</p>
+        </div>
+    </section>
+
+    <section id="auth-section" class="hidden">
+        <div class="auth-container">
+            <div class="logo-area">
+                <img src="images/logo-crelink.png" alt="CreLink Logo" style="height: 50px; margin-bottom: 20px;">
+            </div>
+            <div id="login-form" class="auth-box">
+                <h2>Login</h2>
+                <div class="role-switch">
+                    <button class="role-btn active" onclick="setAuthRole('mitra')">Mitra</button>
+                    <button class="role-btn" onclick="setAuthRole('talenta')">Talenta</button>
+                </div>
+                <input type="email" id="login-email" placeholder="Email">
+                <input type="password" id="login-pass" placeholder="Password">
+                <button onclick="handleLogin()" class="main-btn">MASUK KE DASHBOARD</button>
+                <p>Belum Punya Akun? <span onclick="toggleAuth('register')" class="link-text">Daftar Sekarang!</span></p>
+            </div>
+            <div id="register-form" class="auth-box hidden">
+                <h2>Daftar</h2>
+                <input type="text" id="reg-name" placeholder="Nama Lengkap">
+                <input type="email" id="reg-email" placeholder="Email">
+                <input type="password" id="reg-pass" placeholder="Password">
+                <button onclick="handleRegister()" class="main-btn">DAFTAR</button>
+                <p>Sudah Punya Akun? <span onclick="toggleAuth('login')" class="link-text">Login di sini</span></p>
+            </div>
+        </div>
+    </section>
+
+    <section id="main-app" class="hidden">
+        <nav class="sidebar">
+            <div class="brand"><h2>CreLinK</h2></div>
+            <ul class="menu">
+                <li onclick="navigate('dashboard')" class="active-menu"><i class="fas fa-home"></i> Dashboard</li>
+                <li onclick="navigate('proyek')"><i class="fas fa-briefcase"></i> Proyek</li>
+                <li id="menu-academy" onclick="navigate('academy')"><i class="fas fa-graduation-cap"></i> Academy</li>
+                <li onclick="navigate('forum')"><i class="fas fa-comments"></i> Forum</li>
+            </ul>
+            <div class="bottom-menu">
+                <li onclick="navigate('setting')"><i class="fas fa-cog"></i> Setting</li>
+                <li onclick="handleLogout()"><i class="fas fa-sign-out-alt"></i> Logout</li>
+            </div>
+        </nav>
+
+        <main class="content">
+            <header>
+                <h2 id="welcome-msg">Hallo!</h2>
+                <div class="search-bar" id="top-search-bar">
+                    <input type="text" placeholder="Search..." onkeyup="handleSearch(this.value)">
+                </div>
+                <div class="user-actions">
+                    <div class="notif-wrapper">
+                        <i class="fas fa-bell" onclick="toggleNotif()"></i>
+                        <span class="badge" id="notif-badge">0</span>
+                        <div class="notif-dropdown" id="notif-list"><div class="empty-notif">Kosong</div></div>
+                    </div>
+                    <img src="images/avatar.png" alt="Profile" id="header-profile-pic">
+                </div>
+            </header>
+
+            <div id="page-container">
+                
+                <div id="view-dashboard-talenta" class="view-section hidden">
+                    <div class="hero-banner">
+                        <div class="hero-text">
+                            <h2>Belum Pede Melamar Kerja?</h2>
+                            <p>Ikuti Bootcamp UI/UX Sekarang!</p>
+                            <button onclick="navigate('academy')">Lihat Class</button>
+                        </div>
+                        <img src="images/banner.png" class="hero-img"> 
+                    </div>
+                    <h3>Proyek Terbaru Untukmu</h3>
+                    <div class="card-grid" id="talenta-project-list"></div>
+                </div>
+
+                <div id="view-dashboard-mitra" class="view-section hidden">
+                    
+                    <h3>Daftar Permintaan</h3>
+                    <div id="mitra-applicant-list" class="card-grid">
+                        </div>
+
+                    <div style="border-top: 1px solid rgba(255,255,255,0.2); margin: 30px 0;"></div>
+
+                    <h3>Proyek Aktif Anda</h3>
+                    <div id="mitra-active-projects"></div>
+                    
+                    <h3>Tambah Kebutuhan Proyek</h3>
+                    <div class="create-project-area">
+                        <div class="form-left">
+                            <label>Judul Proyek</label>
+                            <input type="text" id="proj-title" placeholder="Contoh: Desain Logo">
+                            <div class="row">
+                                <div><label>Deadline</label><input type="date" id="proj-date"></div>
+                                <div><label>Komisi</label><div class="input-rp"><span>Rp</span><input type="number" id="proj-budget"></div></div>
+                            </div>
+                            <label>Deskripsi</label><textarea id="proj-desc" rows="3"></textarea>
+                            <button class="publish-btn" onclick="publishProject()">Publish</button>
+                        </div>
+                        <div class="category-select">
+                            <h4>Pilih Jenis Kebutuhan</h4>
+                            <div class="cat-grid">
+                                <div class="cat-item dimmed" onclick="selectCategory(this, 'Graphic Design')"><i class="fas fa-paint-brush"></i> <span>Graphic Design</span></div>
+                                <div class="cat-item dimmed" onclick="selectCategory(this, 'Web Dev')"><i class="fas fa-code"></i> <span>Web Dev</span></div>
+                                <div class="cat-item dimmed" onclick="selectCategory(this, 'Video Editing')"><i class="fas fa-video"></i> <span>Video Editing</span></div>
+                                <div class="cat-item dimmed" onclick="selectCategory(this, 'Copywriting')"><i class="fas fa-pen-nib"></i> <span>Copywriting</span></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="view-academy" class="view-section hidden">
+                    <h3>Academy Learning Path</h3>
+                    <div class="card-grid">
+                        <div class="video-card" onclick="openVideo('https://youtube.com')">
+                            <div class="thumb"><i class="fas fa-play-circle"></i></div>
+                            <h4>Jago Figma dari Nol</h4>
+                            <p>Mentor: Linda Karlina</p>
+                        </div>
+                        <div class="video-card" onclick="openVideo('https://youtube.com')">
+                            <div class="thumb"><i class="fas fa-play-circle"></i></div>
+                            <h4>Dasar Web Development</h4>
+                            <p>Mentor: Asep</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="view-setting" class="view-section hidden">
+                    <h3>Pengaturan Akun</h3>
+                    <div class="setting-card">
+                        <label>Upload Foto Profil</label>
+                        <input type="file" id="profile-upload" accept="image/*" onchange="previewProfile(event)">
+                        <div class="preview-box">
+                            <img id="preview-img" src="images/avatar.png" style="width: 100px; height: 100px; border-radius: 50%;">
+                        </div>
+                        <button class="main-btn" onclick="saveSettings()">Simpan Perubahan</button>
+                    </div>
+                </div>
+
+                 <div id="view-proyek" class="view-section hidden">
+                    <h3>Daftar Semua Proyek</h3>
+                    <div id="all-project-list" class="card-grid"></div>
+                 </div>
+
+                 <div id="view-forum" class="view-section hidden">
+                    <h3>Forum Diskusi</h3>
+                    <div class="create-post-box" style="background:rgba(255,255,255,0.1); padding:15px; border-radius:10px; margin-bottom:20px;">
+                        <textarea id="forum-input" placeholder="Tulis diskusi baru..." rows="3" style="margin-bottom:10px; color:black;"></textarea>
+                        <button class="main-btn" onclick="addForumPost()" style="width:auto; padding:8px 20px;">Kirim Diskusi</button>
+                    </div>
+                    <div id="forum-list-container"></div>
+                 </div>
+            </div>
+        </main>
+    </section>
+    
+    <script src="script.js"></script>
+</body>
+</html>
