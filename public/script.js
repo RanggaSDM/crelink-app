@@ -2,24 +2,96 @@
 let currentUser = null; 
 let userAvatarUrl = "images/avatar.png"; 
 
-// === 1. AUTH & NAVIGASI ===
+// === 1. AUTHENTICATION (LOGIN & REGISTER) ===
+
 async function handleLogin() {
     const email = document.getElementById('login-email').value;
     const pass = document.getElementById('login-pass').value;
+
     if(!email || !pass) return alert("Isi email dan password!");
 
+    // Ubah tombol jadi loading
+    const btn = document.querySelector('#login-form .main-btn');
+    const originalText = btn.innerText;
+    btn.innerText = "Masuk...";
+    btn.disabled = true;
+
     try {
-        const res = await fetch('/.netlify/functions/auth', { method: 'POST', body: JSON.stringify({ action: 'login', email, password: pass }) });
+        const res = await fetch('/.netlify/functions/auth', {
+            method: 'POST',
+            body: JSON.stringify({ action: 'login', email: email, password: pass })
+        });
         const data = await res.json();
+
         if (res.status === 200) {
             currentUser = data;
+            // Cek apakah user punya avatar khusus, kalau tidak pakai default
             userAvatarUrl = (currentUser.avatar && currentUser.avatar.length > 10) ? currentUser.avatar : "images/avatar.png";
+            
             document.getElementById('auth-section').classList.add('hidden');
             document.getElementById('main-app').classList.remove('hidden');
             updateProfileUI();
             initDashboard();
-        } else { alert(data.error); }
-    } catch (e) { alert("Gagal Login: " + e); }
+        } else {
+            alert(data.error);
+        }
+    } catch (e) { 
+        alert("Gagal Login: " + e); 
+    } finally {
+        btn.innerText = originalText;
+        btn.disabled = false;
+    }
+}
+
+// FITUR REGISTER (SUDAH AKTIF)
+async function handleRegister() {
+    const nama = document.getElementById('reg-name').value;
+    const email = document.getElementById('reg-email').value;
+    const pass = document.getElementById('reg-pass').value;
+
+    // Deteksi Role berdasarkan tombol yang sedang ungu (active)
+    const activeBtn = document.querySelector('.role-btn.active');
+    // Jika tombol Mitra aktif, role = mitra. Jika tidak, talenta.
+    // Kita cek innerText-nya.
+    const roleText = activeBtn ? activeBtn.innerText.toLowerCase() : 'talenta'; 
+    // Pastikan role valid (mitra/talenta)
+    const role = roleText.includes('mitra') ? 'mitra' : 'talenta';
+
+    if(!nama || !email || !pass) {
+        return alert("Mohon lengkapi Nama, Email, dan Password!");
+    }
+
+    const btn = document.querySelector('#register-form .main-btn');
+    const originalText = btn.innerText;
+    btn.innerText = "Mendaftar...";
+    btn.disabled = true;
+
+    try {
+        const res = await fetch('/.netlify/functions/auth', {
+            method: 'POST',
+            body: JSON.stringify({
+                action: 'register',
+                nama: nama,
+                email: email,
+                password: pass,
+                role: role
+            })
+        });
+        
+        const data = await res.json();
+
+        if (res.status === 200) {
+            alert("✅ Pendaftaran Berhasil! Silakan Login.");
+            toggleAuth('login'); // Pindah ke form login
+        } else {
+            alert("❌ Gagal: " + (data.error || "Email mungkin sudah dipakai."));
+        }
+    } catch(e) { 
+        alert("Error koneksi: " + e); 
+    } finally {
+        btn.innerText = originalText;
+        btn.disabled = false;
+    }
 }
 
 function updateProfileUI() {
@@ -29,7 +101,7 @@ function updateProfileUI() {
 
 function handleLogout() { location.reload(); }
 
-// === 2. DASHBOARD ===
+// === 2. DASHBOARD LOGIC ===
 function initDashboard() {
     document.getElementById('welcome-msg').innerText = `Hallo, ${currentUser.nama}!`;
     loadNotifications(); 
@@ -47,7 +119,7 @@ function initDashboard() {
     }
 }
 
-// === 3. LOGIKA NOTIFIKASI ===
+// === 3. NOTIFIKASI ===
 async function loadNotifications() {
     const badge = document.getElementById('notif-badge');
     const list = document.getElementById('notif-list');
@@ -74,7 +146,7 @@ async function loadNotifications() {
 }
 
 function toggleNotif(event) {
-    event.stopPropagation(); // Mencegah klik tembus
+    event.stopPropagation();
     document.getElementById('notif-list').classList.toggle('show');
 }
 
@@ -96,6 +168,7 @@ async function loadMitraRealData() {
         const res = await fetch(`/.netlify/functions/getMitraData?id=${currentUser.id}`);
         const data = await res.json();
 
+        // Proyek
         const projContainer = document.getElementById('mitra-active-projects');
         if(data.projects.length === 0) projContainer.innerHTML = "<p style='color:white'>Belum ada proyek.</p>";
         else {
@@ -109,6 +182,7 @@ async function loadMitraRealData() {
             `).join('');
         }
 
+        // Pelamar
         const appContainer = document.getElementById('mitra-applicant-list');
         if(data.applicants.length === 0) appContainer.innerHTML = "<p style='color:white'>Belum ada pelamar pending.</p>";
         else {
@@ -160,14 +234,28 @@ async function publishProject() {
     const category = activeCat ? activeCat.innerText.trim() : "General";
     if(!title || !budget) return alert("Lengkapi Data!");
 
+    // Tombol loading state
+    const btn = document.querySelector('.publish-btn');
+    btn.innerText = "Publishing...";
+    btn.disabled = true;
+
     try {
         await fetch('/.netlify/functions/createProject', {
             method: 'POST',
             body: JSON.stringify({ judul: title, kategori: category, budget, deadline: date, mitra_id: currentUser.id })
         });
         alert("Proyek Terbit!");
+        // Reset Form
+        document.getElementById('proj-title').value = "";
+        document.getElementById('proj-budget').value = "";
+        document.getElementById('proj-desc').value = "";
         loadMitraRealData();
-    } catch (e) { alert("Gagal"); }
+    } catch (e) { 
+        alert("Gagal Publish"); 
+    } finally {
+        btn.innerText = "Publish";
+        btn.disabled = false;
+    }
 }
 
 // === 5. FITUR TALENTA ===
@@ -225,7 +313,7 @@ async function loadForum() {
         container.innerHTML = data.map(post => `
             <div class="forum-card" style="background:rgba(255,255,255,0.1); padding:15px; border-radius:10px; margin-bottom:15px;">
                 <div style="display:flex; gap:10px;">
-                    <img src="${(post.user_avatar && post.user_avatar.length > 10) ? post.user_avatar : 'images/avatar.png'}" style="width:40px; height:40px; border-radius:50%;">
+                    <img src="${(post.user_avatar && post.user_avatar.length > 10) ? post.user_avatar : 'images/avatar.png'}" style="width:40px; height:40px; border-radius:50%; object-fit:cover;">
                     <div style="width:100%">
                         <h4 style="color:white; margin-bottom:5px;">${post.user_name} <small>(${post.user_role})</small></h4>
                         <p style="color:white;">${post.text}</p>
@@ -254,17 +342,68 @@ async function addForumPost() {
     document.getElementById('forum-input').value = ""; loadForum();
 }
 
-// === UTILS ===
+// === UTILS & UI HANDLERS ===
 function goToLogin() { document.getElementById('landing-page').classList.add('hidden'); document.getElementById('auth-section').classList.remove('hidden'); }
-function setAuthRole(role) { document.querySelectorAll('.role-btn').forEach(b => b.classList.remove('active')); const btns = document.querySelectorAll('.role-btn'); if(role==='mitra') btns[0].classList.add('active'); else btns[1].classList.add('active'); }
-function toggleAuth(mode) { if(mode === 'register') { document.getElementById('login-form').classList.add('hidden'); document.getElementById('register-form').classList.remove('hidden'); } else { document.getElementById('login-form').classList.remove('hidden'); document.getElementById('register-form').classList.add('hidden'); } }
-function handleRegister() { alert("Gunakan login akun demo dulu."); }
-function navigate(page) { document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden')); let tId = 'view-' + page; if(page==='dashboard') tId = currentUser.role==='mitra'?'view-dashboard-mitra':'view-dashboard-talenta'; else if(page==='forum') loadForum(); else if(page==='proyek') loadTalentaProjects(); document.getElementById(tId).classList.remove('hidden'); }
-function selectCategory(el, name) { document.querySelectorAll('.cat-item').forEach(e => { e.classList.remove('active'); e.classList.add('dimmed'); }); el.classList.remove('dimmed'); el.classList.add('active'); }
-function handleLogout() { location.reload(); }
-function handleSearch() {}
-function previewProfile(e) { const reader = new FileReader(); reader.onloadend=async()=>{userAvatarUrl=reader.result; updateProfileUI(); await fetch('/.netlify/functions/updateProfile', {method:'POST',body:JSON.stringify({user_id:currentUser.id, avatar:userAvatarUrl})})}; reader.readAsDataURL(e.target.files[0]); }
-async function saveSettings() { alert("Profil tersimpan!"); }
+
+function setAuthRole(role) { 
+    document.querySelectorAll('.role-btn').forEach(b => b.classList.remove('active')); 
+    const btns = document.querySelectorAll('.role-btn'); 
+    // Logic simple: kalau klik mitra (btn[0]), aktifkan btn[0].
+    if(role === 'mitra') btns[0].classList.add('active'); 
+    else btns[1].classList.add('active'); 
+}
+
+function toggleAuth(mode) { 
+    if(mode === 'register') { 
+        document.getElementById('login-form').classList.add('hidden'); 
+        document.getElementById('register-form').classList.remove('hidden'); 
+    } else { 
+        document.getElementById('login-form').classList.remove('hidden'); 
+        document.getElementById('register-form').classList.add('hidden'); 
+    } 
+}
+
+function navigate(page) { 
+    document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden')); 
+    
+    let tId = 'view-' + page; 
+    if(page === 'dashboard') {
+        tId = currentUser.role === 'mitra' ? 'view-dashboard-mitra' : 'view-dashboard-talenta';
+    } else if(page === 'forum') {
+        loadForum(); 
+    } else if(page === 'proyek') {
+        loadTalentaProjects(); 
+    }
+    
+    document.getElementById(tId).classList.remove('hidden'); 
+}
+
+function selectCategory(el, name) { 
+    document.querySelectorAll('.cat-item').forEach(e => { 
+        e.classList.remove('active'); 
+        e.classList.add('dimmed'); 
+    }); 
+    el.classList.remove('dimmed'); 
+    el.classList.add('active'); 
+}
+
+function handleSearch(val) { console.log("Search: ", val); }
+
+function previewProfile(e) { 
+    const reader = new FileReader(); 
+    reader.onloadend = async () => {
+        userAvatarUrl = reader.result; 
+        updateProfileUI(); 
+        // Auto save ke DB saat ganti foto
+        await fetch('/.netlify/functions/updateProfile', {
+            method: 'POST',
+            body: JSON.stringify({ user_id: currentUser.id, avatar: userAvatarUrl })
+        });
+    }; 
+    reader.readAsDataURL(e.target.files[0]); 
+}
+
+async function saveSettings() { alert("Profil berhasil diperbarui!"); }
 function openVideo(url) { window.open(url, '_blank'); }
 
 // TUTUP NOTIFIKASI JIKA KLIK DI LUAR
