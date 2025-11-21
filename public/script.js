@@ -5,35 +5,42 @@ let registerRole = 'mitra'; // Default role saat daftar
 
 // === 1. AUTHENTICATION (LOGIN & REGISTER) ===
 
-// Fungsi visual saat memilih role di REGISTER
+// Fungsi Ganti Tombol di Form REGISTER
 function setRegisterRole(role) {
     registerRole = role;
     const btns = document.querySelectorAll('#reg-role-switch .role-btn');
     btns.forEach(btn => btn.classList.remove('active'));
+    
+    // Nyalakan tombol yang sesuai
     btns.forEach(btn => {
         if(btn.innerText.toLowerCase() === role) btn.classList.add('active');
     });
 }
 
-// Fungsi visual saat memilih role di LOGIN
+// Fungsi Ganti Tombol di Form LOGIN (DIPERBAIKI)
 function setAuthRole(role) { 
-    // Cari tombol di dalam form login
+    // Ambil tombol khusus di dalam form login
     const btns = document.querySelectorAll('#login-form .role-btn');
+    
+    // Matikan semua
     btns.forEach(b => b.classList.remove('active')); 
     
-    // Aktifkan tombol yang dipilih
-    btns.forEach(btn => {
-        if(btn.innerText.toLowerCase() === role) btn.classList.add('active');
-    });
+    // Nyalakan sesuai index (0=Mitra, 1=Talenta)
+    if (role === 'mitra') {
+        btns[0].classList.add('active');
+    } else {
+        btns[1].classList.add('active');
+    }
 }
 
 async function handleLogin() {
     const email = document.getElementById('login-email').value;
     const pass = document.getElementById('login-pass').value;
 
-    // 1. CEK ROLE APA YANG DIPILIH USER DI TOMBOL
+    // Cek tombol mana yang sedang aktif di Login
     const activeBtn = document.querySelector('#login-form .role-btn.active');
-    const selectedRole = activeBtn ? activeBtn.innerText.toLowerCase() : 'talenta';
+    // Pastikan membaca teks dengan aman
+    const selectedRole = activeBtn.innerText.toLowerCase().includes('mitra') ? 'mitra' : 'talenta';
 
     if(!email || !pass) return alert("Isi email dan password!");
 
@@ -50,13 +57,12 @@ async function handleLogin() {
         const data = await res.json();
 
         if (res.status === 200) {
-            // 2. VALIDASI: APAKAH ROLE DI DATABASE SAMA DENGAN TOMBOL YG DIPILIH?
+            // Validasi: Apakah role di DB sama dengan tombol yang dipilih?
             if (data.role !== selectedRole) {
                 alert(`⛔ Akses Ditolak!\n\nAkun ini terdaftar sebagai "${data.role.toUpperCase()}", tapi Anda mencoba masuk lewat menu "${selectedRole.toUpperCase()}".\n\nSilakan klik tombol "${data.role.toUpperCase()}" di atas kolom email.`);
-                return; // Stop, jangan lanjut login
+                return; 
             }
 
-            // Jika cocok, lanjut login
             currentUser = data;
             userAvatarUrl = (currentUser.avatar && currentUser.avatar.length > 10) ? currentUser.avatar : "images/avatar.png";
             
@@ -79,6 +85,8 @@ async function handleRegister() {
     const nama = document.getElementById('reg-name').value;
     const email = document.getElementById('reg-email').value;
     const pass = document.getElementById('reg-pass').value;
+    
+    // Gunakan variabel global registerRole
     const role = registerRole; 
 
     if(!nama || !email || !pass) {
