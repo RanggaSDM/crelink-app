@@ -3,27 +3,25 @@ let currentUser = null;
 let userAvatarUrl = "images/avatar.png"; 
 let registerRole = 'mitra'; // Default role saat daftar
 
-// === 1. AUTHENTICATION ===
+// === 1. AUTHENTICATION (LOGIN & REGISTER) ===
 
-// Fungsi memilih role saat REGISTER
+// Fungsi visual saat memilih role di REGISTER
 function setRegisterRole(role) {
     registerRole = role;
-    // Update tampilan tombol di form register
     const btns = document.querySelectorAll('#reg-role-switch .role-btn');
     btns.forEach(btn => btn.classList.remove('active'));
-    
-    // Cari tombol yang sesuai teks-nya dan aktifkan
     btns.forEach(btn => {
         if(btn.innerText.toLowerCase() === role) btn.classList.add('active');
     });
 }
 
-// Fungsi memilih role saat LOGIN (Hanya visual, tidak kirim ke backend karena login pakai email)
-function setLoginRole(role) {
-    // Cuma visual biar user tau dia login sebagai apa
-    const btns = document.querySelectorAll('#login-form .role-switch .role-btn');
-    btns.forEach(b => b.classList.remove('active'));
+// Fungsi visual saat memilih role di LOGIN
+function setAuthRole(role) { 
+    // Cari tombol di dalam form login
+    const btns = document.querySelectorAll('#login-form .role-btn');
+    btns.forEach(b => b.classList.remove('active')); 
     
+    // Aktifkan tombol yang dipilih
     btns.forEach(btn => {
         if(btn.innerText.toLowerCase() === role) btn.classList.add('active');
     });
@@ -33,9 +31,12 @@ async function handleLogin() {
     const email = document.getElementById('login-email').value;
     const pass = document.getElementById('login-pass').value;
 
+    // 1. CEK ROLE APA YANG DIPILIH USER DI TOMBOL
+    const activeBtn = document.querySelector('#login-form .role-btn.active');
+    const selectedRole = activeBtn ? activeBtn.innerText.toLowerCase() : 'talenta';
+
     if(!email || !pass) return alert("Isi email dan password!");
 
-    // Ubah tombol jadi loading
     const btn = document.querySelector('#login-form .main-btn');
     const originalText = btn.innerText;
     btn.innerText = "Masuk...";
@@ -49,6 +50,13 @@ async function handleLogin() {
         const data = await res.json();
 
         if (res.status === 200) {
+            // 2. VALIDASI: APAKAH ROLE DI DATABASE SAMA DENGAN TOMBOL YG DIPILIH?
+            if (data.role !== selectedRole) {
+                alert(`⛔ Akses Ditolak!\n\nAkun ini terdaftar sebagai "${data.role.toUpperCase()}", tapi Anda mencoba masuk lewat menu "${selectedRole.toUpperCase()}".\n\nSilakan klik tombol "${data.role.toUpperCase()}" di atas kolom email.`);
+                return; // Stop, jangan lanjut login
+            }
+
+            // Jika cocok, lanjut login
             currentUser = data;
             userAvatarUrl = (currentUser.avatar && currentUser.avatar.length > 10) ? currentUser.avatar : "images/avatar.png";
             
@@ -71,8 +79,6 @@ async function handleRegister() {
     const nama = document.getElementById('reg-name').value;
     const email = document.getElementById('reg-email').value;
     const pass = document.getElementById('reg-pass').value;
-
-    // GUNAKAN registerRole YANG DIPILIH USER
     const role = registerRole; 
 
     if(!nama || !email || !pass) {
@@ -92,7 +98,7 @@ async function handleRegister() {
                 nama: nama,
                 email: email,
                 password: pass,
-                role: role // Kirim role yang benar
+                role: role
             })
         });
         
@@ -358,7 +364,7 @@ async function addForumPost() {
     document.getElementById('forum-input').value = ""; loadForum();
 }
 
-// === UTILS ===
+// === UTILS & NAVIGATION ===
 function goToLogin() { document.getElementById('landing-page').classList.add('hidden'); document.getElementById('auth-section').classList.remove('hidden'); }
 
 function toggleAuth(mode) { 
@@ -400,9 +406,12 @@ function previewProfile(e) {
 async function saveSettings() { alert("Profil berhasil diperbarui!"); }
 function openVideo(url) { window.open(url, '_blank'); }
 
+// TUTUP NOTIFIKASI JIKA KLIK DI LUAR
 window.onclick = function(event) {
     if (!event.target.closest('.notif-wrapper')) {
         const dropdown = document.getElementById('notif-list');
-        if (dropdown && dropdown.classList.contains('show')) { dropdown.classList.remove('show'); }
+        if (dropdown && dropdown.classList.contains('show')) {
+            dropdown.classList.remove('show');
+        }
     }
 }
