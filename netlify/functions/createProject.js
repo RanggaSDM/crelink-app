@@ -8,12 +8,13 @@ exports.handler = async (event) => {
     if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers, body: '' };
 
     try {
-        const { judul, kategori, budget, deadline } = JSON.parse(event.body);
+        // PERUBAHAN 1: Kita ambil 'mitra_id' juga dari data yang dikirim
+        const { judul, kategori, budget, deadline, mitra_id } = JSON.parse(event.body);
         
-        // Masukkan ke Database
+        // PERUBAHAN 2: Kita masukkan 'mitra_id' ke dalam database ($1)
         await client.query(
-            'INSERT INTO projects (judul, kategori, budget, deadline) VALUES ($1, $2, $3, $4)',
-            [judul, kategori, budget, deadline]
+            'INSERT INTO projects (mitra_id, judul, kategori, budget, deadline) VALUES ($1, $2, $3, $4, $5)',
+            [mitra_id, judul, kategori, budget, deadline]
         );
         
         await client.end();
