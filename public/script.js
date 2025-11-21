@@ -32,9 +32,7 @@ function handleLogout() { location.reload(); }
 // === 2. DASHBOARD ===
 function initDashboard() {
     document.getElementById('welcome-msg').innerText = `Hallo, ${currentUser.nama}!`;
-    
-    // PENTING: Load Notifikasi setiap kali masuk dashboard
-    loadNotifications();
+    loadNotifications(); // LOAD NOTIFIKASI
 
     if(currentUser.role === 'mitra') {
         document.getElementById('menu-academy').style.display = 'none';
@@ -49,7 +47,7 @@ function initDashboard() {
     }
 }
 
-// === 3. LOGIKA NOTIFIKASI (PERBAIKAN UTAMA) ===
+// === 3. LOGIKA NOTIFIKASI (LENGKAP) ===
 async function loadNotifications() {
     const badge = document.getElementById('notif-badge');
     const list = document.getElementById('notif-list');
@@ -58,24 +56,36 @@ async function loadNotifications() {
         const res = await fetch(`/.netlify/functions/getNotifications?user_id=${currentUser.id}`);
         const data = await res.json();
         
-        // Update Angka Lonceng
         badge.innerText = data.length;
+        badge.style.display = data.length > 0 ? 'block' : 'none';
         
-        // Render Dropdown Notifikasi
         if(data.length === 0) {
             list.innerHTML = "<div class='empty-notif'>Tidak ada notifikasi</div>";
         } else {
             list.innerHTML = data.map(n => `
-                <div style="padding: 10px; border-bottom:1px solid #eee; font-size: 12px; color: ${n.type === 'success' ? 'green' : 'red'}; background: ${n.read ? 'white' : '#f9f9f9'}">
-                    ${n.message}
+                <div style="padding: 10px; border-bottom:1px solid #eee; font-size: 12px; color: ${n.type === 'success' ? 'green' : 'red'}; background: ${n.read ? 'white' : '#f9f9f9'}; position: relative;">
+                    <div style="padding-right: 20px;">${n.message}</div>
                     <div style="font-size:10px; color:#aaa; margin-top:2px;">${new Date(n.created_at).toLocaleDateString()}</div>
+                    <span onclick="deleteNotif(event, ${n.id})" style="position: absolute; top: 5px; right: 5px; cursor: pointer; color: #999; font-weight: bold; padding: 0 5px;">&times;</span>
                 </div>
             `).join('');
         }
     } catch (e) { console.log("Gagal load notif"); }
 }
 
-function toggleNotif() { document.getElementById('notif-list').classList.toggle('show'); }
+function toggleNotif(event) {
+    event.stopPropagation();
+    document.getElementById('notif-list').classList.toggle('show');
+}
+
+async function deleteNotif(e, id) {
+    e.stopPropagation();
+    if(!confirm("Hapus notifikasi ini?")) return;
+    try {
+        await fetch('/.netlify/functions/deleteNotif', { method: 'POST', body: JSON.stringify({ id: id }) });
+        loadNotifications();
+    } catch(e) { alert("Gagal hapus"); }
+}
 
 // === 4. FITUR MITRA (REAL DATA) ===
 async function loadMitraRealData() {
@@ -86,7 +96,6 @@ async function loadMitraRealData() {
         const res = await fetch(`/.netlify/functions/getMitraData?id=${currentUser.id}`);
         const data = await res.json();
 
-        // Proyek Sendiri
         const projContainer = document.getElementById('mitra-active-projects');
         if(data.projects.length === 0) projContainer.innerHTML = "<p style='color:white'>Belum ada proyek.</p>";
         else {
@@ -100,7 +109,6 @@ async function loadMitraRealData() {
             `).join('');
         }
 
-        // Pelamar
         const appContainer = document.getElementById('mitra-applicant-list');
         if(data.applicants.length === 0) appContainer.innerHTML = "<p style='color:white'>Belum ada pelamar pending.</p>";
         else {
@@ -131,7 +139,7 @@ async function processApplicant(appId, action, talentaId, projectTitle) {
         if(res.status === 200) {
             alert("Berhasil diproses!");
             loadMitraRealData();
-            loadNotifications(); // Refresh Notif
+            loadNotifications(); 
         }
     } catch(e) { alert("Gagal proses"); }
 }
@@ -162,7 +170,7 @@ async function publishProject() {
     } catch (e) { alert("Gagal"); }
 }
 
-// === 5. FITUR TALENTA (PERBAIKAN: HIDE APPLY UTK MITRA) ===
+// === 5. FITUR TALENTA ===
 async function loadTalentaProjects() {
     const container = document.getElementById('talenta-project-list');
     const allContainer = document.getElementById('all-project-list');
@@ -175,13 +183,9 @@ async function loadTalentaProjects() {
         const data = await res.json();
 
         const cards = data.map(p => {
-            // LOGIKA: Jika user adalah MITRA, jangan tampilkan tombol Apply
-            let buttonHtml = '';
-            if (currentUser.role === 'mitra') {
-                buttonHtml = `<button class="main-btn" style="background:#ccc; cursor:not-allowed; margin-top:10px;" disabled>Mode Mitra</button>`;
-            } else {
-                buttonHtml = `<button class="main-btn" onclick="applyProject(${p.id})" style="margin-top:10px;">Apply</button>`;
-            }
+            let buttonHtml = currentUser.role === 'mitra' ? 
+                `<button class="main-btn" style="background:#ccc; cursor:not-allowed; margin-top:10px;" disabled>Mode Mitra</button>` : 
+                `<button class="main-btn" onclick="applyProject(${p.id})" style="margin-top:10px;">Apply</button>`;
 
             return `
             <div class="card-item">
@@ -211,7 +215,7 @@ async function applyProject(pId) {
     } catch(e) { alert("Error"); }
 }
 
-// === 6. FORUM & LAINNYA ===
+// === 6. FORUM ===
 async function loadForum() {
     const container = document.getElementById('forum-list-container');
     container.innerHTML = "<p style='color:white'>Memuat...</p>";
@@ -262,3 +266,13 @@ function handleSearch() {}
 function previewProfile(e) { const reader = new FileReader(); reader.onloadend=async()=>{userAvatarUrl=reader.result; updateProfileUI(); await fetch('/.netlify/functions/updateProfile', {method:'POST',body:JSON.stringify({user_id:currentUser.id, avatar:userAvatarUrl})})}; reader.readAsDataURL(e.target.files[0]); }
 async function saveSettings() { alert("Profil tersimpan!"); }
 function openVideo(url) { window.open(url, '_blank'); }
+
+// TUTUP NOTIFIKASI JIKA KLIK DI LUAR
+window.onclick = function(event) {
+    if (!event.target.closest('.notif-wrapper')) {
+        const dropdown = document.getElementById('notif-list');
+        if (dropdown && dropdown.classList.contains('show')) {
+            dropdown.classList.remove('show');
+        }
+    }
+}

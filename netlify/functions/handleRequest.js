@@ -18,7 +18,7 @@ exports.handler = async (event) => {
             // Ambil Email Mitra
             const resMitra = await client.query('SELECT email FROM users WHERE id = $1', [mitra_id]);
             const emailMitra = resMitra.rows[0].email;
-            notifPesan += ` Silakan hubungi Mitra via email: ${emailMitra}`;
+            notifPesan += ` Silakan kirim cv kepada Mitra via email: ${emailMitra}`;
         }
         await client.query('INSERT INTO notifications (user_id, message, type) VALUES ($1, $2, $3)', [talenta_id, notifPesan, action === 'terima' ? 'success' : 'error']);
 
