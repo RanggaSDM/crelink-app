@@ -7,23 +7,19 @@ exports.handler = async (event, context) => {
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS'
   };
 
-  // Menangani request pre-flight (untuk keamanan browser)
   if (event.httpMethod === 'OPTIONS') {
-    return {
-      statusCode: 200,
-      headers,
-      body: ''
-    };
+    return { statusCode: 200, headers, body: '' };
   }
 
+  // PENTING: Kita pakai variabel otomatis dari Netlify
   const client = new Client({
-    connectionString: process.env.DATABASE_URL,
+    connectionString: process.env.NETLIFY_DATABASE_URL,
     ssl: { rejectUnauthorized: false }
   });
 
   try {
     await client.connect();
-    // Mengambil data proyek dari database
+    // Ambil semua data dari tabel projects
     const result = await client.query('SELECT * FROM projects');
     await client.end();
 
@@ -38,7 +34,7 @@ exports.handler = async (event, context) => {
     return {
       statusCode: 500,
       headers,
-      body: JSON.stringify({ error: 'Gagal mengambil data', details: error.message })
+      body: JSON.stringify({ error: 'Gagal ambil data', details: error.message })
     };
   }
 };
