@@ -1,257 +1,224 @@
-// === STATE MANAGEMENT ===
-let currentUser = null; 
-let selectedCategory = null;
+// === STATE GLOBAL ===
+let currentUser = null; // Data user asli dari database
 let userAvatarUrl = "images/avatar.png"; 
 
-// === DATA DUMMY (FALLBACK) ===
-let globalProjects = []; // Nanti diisi dari database
+// === 1. AUTHENTICATION (REAL DATABASE) ===
 
-// Data Request Pelamar untuk Mitra
-let mitraRequests = [
-    { id: 101, name: "Nasa Fatimah Caesara", univ: "Universitas Udayana", age: "22 Tahun", project: "Editor Video Tiktok/Reels" },
-    { id: 102, name: "I Gusti Agung Rangga", univ: "Universitas Udayana", age: "22 Tahun", project: "Editor Video Tiktok/Reels" }
-];
+// Login ke Database
+async function handleLogin() {
+    const email = document.getElementById('login-email').value;
+    const pass = document.getElementById('login-pass').value;
 
-// Data Forum
-let globalForum = [
-    { 
-        id: 1, user: "Freelancer123", userImg: "images/avatar.png", text: "Gimana cara nentuin harga desain buat UMKM?", time: "10 menit lalu",
-        replies: [ { user: "SeniorDesain", text: "Hitung jam kerja dikali rate kamu bro.", time: "5 menit lalu" } ]
-    }
-];
+    if(!email || !pass) return alert("Isi email dan password!");
 
-// === 1. NAVIGASI & AUTH (PENTING AGAR TIDAK STUCK) ===
+    try {
+        const res = await fetch('/.netlify/functions/auth', {
+            method: 'POST',
+            body: JSON.stringify({ action: 'login', email: email, password: pass })
+        });
+        
+        const data = await res.json();
 
-function goToLogin() {
-    // Sembunyikan Landing Page
-    const landing = document.getElementById('landing-page');
-    landing.classList.add('hidden');
-    landing.classList.remove('active-section');
-    
-    // Munculkan Halaman Login
-    const auth = document.getElementById('auth-section');
-    auth.classList.remove('hidden');
+        if (res.status === 200) {
+            // LOGIN SUKSES
+            currentUser = data; // Simpan data user
+            alert(`Selamat datang, ${currentUser.nama}!`);
+            
+            // Pindah Halaman
+            document.getElementById('auth-section').classList.add('hidden');
+            document.getElementById('main-app').classList.remove('hidden');
+            
+            // Set Profil
+            document.getElementById('header-profile-pic').src = currentUser.avatar || "images/avatar.png";
+            userAvatarUrl = currentUser.avatar || "images/avatar.png";
+            
+            initDashboard();
+        } else {
+            alert(data.error);
+        }
+    } catch (e) { alert("Gagal Login: " + e); }
 }
 
-function setAuthRole(role) {
-    document.querySelectorAll('.role-btn').forEach(btn => btn.classList.remove('active'));
-    const buttons = document.querySelectorAll('.role-btn');
-    if(role === 'mitra') buttons[0].classList.add('active');
-    else buttons[1].classList.add('active');
-}
+// Register ke Database
+async function handleRegister() {
+    const nama = document.getElementById('reg-name').value;
+    const email = document.getElementById('reg-email').value;
+    const pass = document.getElementById('reg-pass').value;
+    // Ambil role dari tombol yang aktif (Mitra/Talenta)
+    const role = document.querySelector('.role-btn.active').innerText.toLowerCase();
 
-function handleLogin() {
-    const activeBtn = document.querySelector('.role-btn.active');
-    currentUser = activeBtn.innerText === 'Mitra' ? 'mitra' : 'talenta';
-    
-    document.getElementById('auth-section').classList.add('hidden');
-    document.getElementById('main-app').classList.remove('hidden');
-    
-    // Set Avatar
-    document.getElementById('header-profile-pic').src = userAvatarUrl;
-    document.getElementById('preview-img').src = userAvatarUrl;
-    
-    initDashboard();
-}
+    if(!nama || !email || !pass) return alert("Lengkapi data!");
 
-function handleLogout() { location.reload(); }
-
-function toggleAuth(mode) {
-    const login = document.getElementById('login-form');
-    const reg = document.getElementById('register-form');
-    if(mode === 'register') { login.classList.add('hidden'); reg.classList.remove('hidden'); }
-    else { login.classList.remove('hidden'); reg.classList.add('hidden'); }
+    try {
+        const res = await fetch('/.netlify/functions/auth', {
+            method: 'POST',
+            body: JSON.stringify({ action: 'register', nama, email, password: pass, role })
+        });
+        
+        if(res.status === 200) {
+            alert("Pendaftaran Berhasil! Silakan Login.");
+            toggleAuth('login');
+        } else {
+            alert("Gagal Daftar.");
+        }
+    } catch(e) { alert("Error: " + e); }
 }
 
 // === 2. DASHBOARD LOGIC ===
 
 function initDashboard() {
-    document.getElementById('welcome-msg').innerText = `Hallo, ${currentUser === 'mitra' ? 'Mitra' : 'Talenta'}!`;
+    document.getElementById('welcome-msg').innerText = `Hallo, ${currentUser.nama} (${currentUser.role})!`;
     
-    if(currentUser === 'mitra') {
-        // Tampilan Mitra
+    if(currentUser.role === 'mitra') {
         document.getElementById('menu-academy').style.display = 'none';
         document.getElementById('top-search-bar').style.display = 'none';
         navigate('dashboard');
-        
-        loadMitraRequests(); // Muat pelamar
-        loadMitraProjects(); // Muat proyek sendiri
+        loadMitraProjects(); // Load proyek sendiri (sementara dummy dulu utk edit)
     } else {
-        // Tampilan Talenta
         document.getElementById('menu-academy').style.display = 'flex';
         document.getElementById('top-search-bar').style.display = 'block';
         navigate('dashboard');
-        
-        loadTalentaProjects(); // AMBIL DARI DATABASE NEON
+        loadTalentaProjects(); // LOAD REAL DARI DB
     }
 }
 
-function navigate(page) {
-    document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
-    document.querySelectorAll('.menu li').forEach(el => el.classList.remove('active-menu'));
-    
-    let targetId = 'view-' + page;
-    if(page === 'dashboard') targetId = currentUser === 'mitra' ? 'view-dashboard-mitra' : 'view-dashboard-talenta';
-    else if (page === 'forum') loadForum();
-    else if (page === 'proyek' && currentUser === 'talenta') loadTalentaProjects(); // Load DB saat klik proyek
+// === 3. PUBLISH PROYEK (REAL DATABASE) ===
 
-    const targetEl = document.getElementById(targetId);
-    if(targetEl) targetEl.classList.remove('hidden');
+async function publishProject() {
+    const title = document.getElementById('proj-title').value;
+    const budget = document.getElementById('proj-budget').value;
+    const date = document.getElementById('proj-date').value;
+    // Ambil kategori yang aktif
+    const activeCat = document.querySelector('.cat-item.active');
+    const category = activeCat ? activeCat.innerText.trim() : "General";
+
+    if(!title || !budget) return alert("Lengkapi Judul & Budget!");
+
+    try {
+        const res = await fetch('/.netlify/functions/createProject', {
+            method: 'POST',
+            body: JSON.stringify({ judul: title, kategori: category, budget: budget, deadline: date })
+        });
+
+        if(res.status === 200) {
+            alert("Proyek Berhasil Terbit di Database!");
+            // Reset form
+            document.getElementById('proj-title').value = "";
+            document.getElementById('proj-budget').value = "";
+        }
+    } catch (e) { alert("Gagal posting: " + e); }
 }
 
-// === 3. INTEGRASI DATABASE NEON (TALENTA) ===
+// === 4. LOAD PROYEK (REAL DATABASE) ===
 
 async function loadTalentaProjects() {
     const container = document.getElementById('talenta-project-list');
-    const allContainer = document.getElementById('all-project-list');
-    
-    // Tampilkan Loading
-    const loadingHTML = "<p style='color:white; text-align:center;'>Sedang mengambil data dari database...</p>";
-    if(container) container.innerHTML = loadingHTML;
-    if(allContainer) allContainer.innerHTML = loadingHTML;
+    container.innerHTML = "<p style='color:white'>Mengambil data live...</p>";
 
     try {
-        // PANGGIL BACKEND NETLIFY
-        const response = await fetch('/.netlify/functions/getProjects');
-        
-        if (!response.ok) throw new Error("Gagal koneksi backend");
-        const data = await response.json();
+        const res = await fetch('/.netlify/functions/getProjects');
+        const data = await res.json();
 
-        // Cek Kosong
-        if(data.length === 0) {
-            const empty = "<p>Belum ada proyek tersedia.</p>";
-            if(container) container.innerHTML = empty;
-            if(allContainer) allContainer.innerHTML = empty;
-            return;
-        }
+        if(data.length === 0) { container.innerHTML = "<p>Belum ada proyek.</p>"; return; }
 
-        // Render Data Database
-        const cardsHTML = data.map(p => `
+        container.innerHTML = data.map(p => `
             <div class="card-item">
                 <h4>${p.judul}</h4>
                 <p style="color:#888; font-size:12px;">Deadline: ${p.deadline ? p.deadline.split('T')[0] : '-'}</p>
-                <div style="margin: 10px 0;">
-                    <span style="background:#eee; padding:5px; border-radius:5px; font-size:12px;">${p.kategori}</span>
-                </div>
-                <h4 style="color:var(--primary-purple)">Rp ${parseInt(p.budget).toLocaleString('id-ID')}</h4>
-                <button class="main-btn" style="width:100%; margin-top:10px;">Apply</button>
+                <span style="background:#eee; padding:5px; border-radius:5px; font-size:12px;">${p.kategori}</span>
+                <h4 style="color:var(--primary-purple); margin-top:10px;">Rp ${parseInt(p.budget).toLocaleString('id-ID')}</h4>
+                <button class="main-btn" style="margin-top:10px;">Apply</button>
             </div>
         `).join('');
-
-        if(container) container.innerHTML = cardsHTML;
-        if(allContainer) allContainer.innerHTML = cardsHTML;
-
-    } catch (error) {
-        console.error(error);
-        const errMsg = "<p style='color:red;'>Gagal memuat data (Cek console).</p>";
-        if(container) container.innerHTML = errMsg;
-    }
+    } catch (e) { console.log(e); }
 }
 
-// === 4. FITUR MITRA (SIMULASI LOKAL) ===
+// === 5. FORUM (REAL DATABASE) ===
 
-function loadMitraRequests() {
-    const container = document.getElementById('mitra-applicant-list');
-    if(mitraRequests.length === 0) { container.innerHTML = "<p>Tidak ada permintaan.</p>"; return; }
-    container.innerHTML = mitraRequests.map(req => `
-        <div class="applicant-card">
-            <div class="app-header">
-                <h4>${req.name}</h4>
-                <p>${req.univ}</p>
-                <p style="font-size:11px; color:#888;">Usia: ${req.age}</p>
-            </div>
-            <div style="margin: 5px 0;"> <span class="app-meta">Proyek: ${req.project}</span> </div>
-            <div class="app-actions">
-                <button class="btn-accept" onclick="handleRequest(${req.id}, 'terima')">Terima</button>
-                <button class="btn-reject" onclick="handleRequest(${req.id}, 'tolak')">Tolak</button>
-            </div>
-        </div>
-    `).join('');
-}
-
-function handleRequest(id, action) {
-    alert(`Pelamar ${action === 'terima' ? 'Diterima' : 'Ditolak'}!`);
-    mitraRequests = mitraRequests.filter(r => r.id !== id);
-    loadMitraRequests();
-}
-
-function loadMitraProjects() {
-    // Mitra masih pakai data dummy lokal untuk simulasi
-    // (Nanti bisa kita sambungkan ke DB juga untuk fitur POST)
-    const container = document.getElementById('mitra-active-projects');
-    const dummyMitraProj = [
-        { id: 99, title: "Editor Video Tiktok", deadline: "2025-11-20", budget: 750000 }
-    ];
-    container.innerHTML = dummyMitraProj.map(p => `
-        <div class="card-item" style="margin-bottom:10px;">
-            <h4>${p.title}</h4>
-            <p style="color:#888; font-size:12px;">Deadline: ${p.deadline}</p>
-            <p style="color:var(--primary-purple); font-weight:bold;">Rp ${p.budget.toLocaleString()}</p>
-            <button class="main-btn" onclick="alert('Hapus Proyek')" style="padding:5px; background:red; font-size:12px; margin-top:5px;">Hapus</button>
-        </div>
-    `).join('');
-}
-
-function publishProject() {
-    alert("Fitur Publish akan segera hadir menggunakan Database!");
-}
-
-function selectCategory(element, catName) {
-    document.querySelectorAll('.cat-item').forEach(el => {
-        el.classList.remove('active');
-        el.classList.add('dimmed');
-    });
-    element.classList.remove('dimmed');
-    element.classList.add('active');
-    selectedCategory = catName;
-}
-
-// === 5. FORUM & UTILS ===
-
-function loadForum() {
+async function loadForum() {
     const container = document.getElementById('forum-list-container');
-    container.innerHTML = globalForum.map((post, index) => `
-        <div class="forum-card" style="background:rgba(255,255,255,0.1); padding:15px; border-radius:10px; margin-bottom:15px;">
-            <div style="display:flex; gap:10px; align-items:flex-start;">
-                <img src="${post.userImg}" style="width:40px; height:40px; border-radius:50%; background:white;">
-                <div style="width:100%;">
-                    <h4 style="color:white; margin-bottom:5px;">${post.user} <span style="font-size:10px; font-weight:normal; opacity:0.7;">${post.time}</span></h4>
-                    <p style="color:white; font-size:14px;">${post.text}</p>
-                    <button onclick="toggleReplyInput(${index})" style="background:transparent; border:none; color:#ccc; cursor:pointer; font-size:12px; margin-top:5px;"><i class="fas fa-reply"></i> Balas</button>
-                    <div id="reply-input-${index}" class="hidden" style="margin-top:10px;">
-                        <input type="text" id="reply-text-${index}" placeholder="Tulis balasan..." style="width:80%; padding:5px;">
-                        <button onclick="submitReply(${index})" style="padding:5px 10px; background:white; color:purple; border:none; border-radius:4px; cursor:pointer;">Kirim</button>
+    container.innerHTML = "<p style='color:white'>Memuat diskusi...</p>";
+
+    try {
+        const res = await fetch('/.netlify/functions/forum'); // GET
+        const data = await res.json();
+
+        container.innerHTML = data.map(post => `
+            <div class="forum-card" style="background:rgba(255,255,255,0.1); padding:15px; border-radius:10px; margin-bottom:15px;">
+                <div style="display:flex; gap:10px;">
+                    <img src="${post.user_avatar || 'images/avatar.png'}" style="width:40px; height:40px; border-radius:50%;">
+                    <div>
+                        <h4 style="color:white; margin-bottom:5px;">${post.user_name} <small>(${post.user_role})</small></h4>
+                        <p style="color:white;">${post.text}</p>
                     </div>
-                    ${post.replies.map(rep => `<div class="reply-box"><strong style="color:white; font-size:12px;">${rep.user}</strong><p style="color:rgba(255,255,255,0.8); font-size:13px;">${rep.text}</p></div>`).join('')}
                 </div>
             </div>
-        </div>
-    `).join('');
+        `).join('');
+    } catch (e) { console.log(e); }
 }
 
-function addForumPost() {
+async function addForumPost() {
     const text = document.getElementById('forum-input').value;
     if(!text) return;
-    globalForum.unshift({ id: Date.now(), user: currentUser === 'mitra'?"Mitra":"Talenta", userImg: userAvatarUrl, text: text, time: "Baru saja", replies: [] });
-    document.getElementById('forum-input').value = ""; loadForum();
+
+    try {
+        await fetch('/.netlify/functions/forum', {
+            method: 'POST',
+            body: JSON.stringify({
+                user_name: currentUser.nama,
+                user_role: currentUser.role,
+                user_avatar: userAvatarUrl,
+                text: text
+            })
+        });
+        document.getElementById('forum-input').value = "";
+        loadForum(); // Reload biar muncul
+    } catch (e) { alert("Gagal kirim pesan"); }
 }
 
-function toggleReplyInput(index) { document.getElementById(`reply-input-${index}`).classList.toggle('hidden'); }
-
-function submitReply(index) {
-    const text = document.getElementById(`reply-text-${index}`).value; if(!text) return;
-    globalForum[index].replies.push({ user: currentUser==='mitra'?"Mitra":"Talenta", text: text, time: "Baru saja" });
-    loadForum();
+// === UTILS & NAVIGATION ===
+function goToLogin() {
+    document.getElementById('landing-page').classList.add('hidden');
+    document.getElementById('landing-page').classList.remove('active-section');
+    document.getElementById('auth-section').classList.remove('hidden');
 }
-
-function previewProfile(event) {
-    const reader = new FileReader();
-    reader.onload = function(){ userAvatarUrl = reader.result; document.getElementById('preview-img').src = userAvatarUrl; document.getElementById('header-profile-pic').src = userAvatarUrl; };
-    reader.readAsDataURL(event.target.files[0]);
+function setAuthRole(role) {
+    document.querySelectorAll('.role-btn').forEach(b => b.classList.remove('active'));
+    // Cari tombol berdasarkan text
+    const btns = document.querySelectorAll('.role-btn');
+    if(role==='mitra') btns[0].classList.add('active'); else btns[1].classList.add('active');
 }
-
-function saveSettings() { alert("Profil disimpan!"); }
+function toggleAuth(mode) {
+    if(mode === 'register') { document.getElementById('login-form').classList.add('hidden'); document.getElementById('register-form').classList.remove('hidden'); }
+    else { document.getElementById('login-form').classList.remove('hidden'); document.getElementById('register-form').classList.add('hidden'); }
+}
+function navigate(page) {
+    document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
+    let targetId = 'view-' + page;
+    if(page === 'dashboard') targetId = currentUser.role === 'mitra' ? 'view-dashboard-mitra' : 'view-dashboard-talenta';
+    else if (page === 'forum') loadForum();
+    else if (page === 'proyek' && currentUser.role === 'talenta') loadTalentaProjects();
+    
+    const targetEl = document.getElementById(targetId);
+    if(targetEl) targetEl.classList.remove('hidden');
+}
+function selectCategory(el, name) {
+    document.querySelectorAll('.cat-item').forEach(e => { e.classList.remove('active'); e.classList.add('dimmed'); });
+    el.classList.remove('dimmed'); el.classList.add('active');
+}
+// Fungsi Dummy Pelamar (Tetap ada utk visual Mitra)
+function loadMitraRequests() {
+    // Bisa dikembangkan pakai database nanti, skrg dummy visual dulu
+    const container = document.getElementById('mitra-applicant-list');
+    container.innerHTML = `<div class="applicant-card"><h4>Nasa Fatimah</h4><p>Univ Udayana</p><div style="margin-top:5px;"><button class="btn-accept">Terima</button></div></div>`;
+}
+function loadMitraProjects() {
+    // Load dummy lokal agar mitra bisa hapus2an simulasi
+    document.getElementById('mitra-active-projects').innerHTML = `<p style='color:white'>Proyek aktif muncul di sini (simulasi).</p>`;
+}
+function handleLogout() { location.reload(); }
 function toggleNotif() { document.getElementById('notif-list').classList.toggle('show'); }
-function handleRegister() { alert("Daftar sukses"); toggleAuth('login'); }
 function openVideo(url) { window.open(url, '_blank'); }
-function handleSearch(val) { console.log("Search:", val); }
+function previewProfile(e) { /* Logic preview gambar */ }
+function saveSettings() { alert("Simpan profil"); }
+function handleSearch(v) {}
