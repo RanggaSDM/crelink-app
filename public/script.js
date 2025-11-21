@@ -1,46 +1,33 @@
 // === STATE GLOBAL ===
 let currentUser = null; 
 let userAvatarUrl = "images/avatar.png"; 
-let registerRole = 'mitra'; // Default role saat daftar
 
 // === 1. AUTHENTICATION (LOGIN & REGISTER) ===
 
-// Fungsi Ganti Tombol di Form REGISTER
-function setRegisterRole(role) {
-    registerRole = role;
-    const btns = document.querySelectorAll('#reg-role-switch .role-btn');
-    btns.forEach(btn => btn.classList.remove('active'));
+// FUNGSI BARU: MENGATUR TOMBOL ROLE (Generik)
+// Fungsi ini otomatis mendeteksi tombol mana yang diklik di form mana pun
+function toggleRole(btnElement) {
+    // Cari 'bapak' (parent) dari tombol yang diklik
+    const parent = btnElement.parentElement;
     
-    // Nyalakan tombol yang sesuai
-    btns.forEach(btn => {
-        if(btn.innerText.toLowerCase() === role) btn.classList.add('active');
-    });
-}
-
-// Fungsi Ganti Tombol di Form LOGIN (DIPERBAIKI)
-function setAuthRole(role) { 
-    // Ambil tombol khusus di dalam form login
-    const btns = document.querySelectorAll('#login-form .role-btn');
+    // Cari semua saudara (tombol lain) di dalam bapak yang sama
+    const allBtns = parent.querySelectorAll('.role-btn');
     
     // Matikan semua
-    btns.forEach(b => b.classList.remove('active')); 
+    allBtns.forEach(b => b.classList.remove('active'));
     
-    // Nyalakan sesuai index (0=Mitra, 1=Talenta)
-    if (role === 'mitra') {
-        btns[0].classList.add('active');
-    } else {
-        btns[1].classList.add('active');
-    }
+    // Nyalakan yang diklik saja
+    btnElement.classList.add('active');
 }
 
 async function handleLogin() {
     const email = document.getElementById('login-email').value;
     const pass = document.getElementById('login-pass').value;
 
-    // Cek tombol mana yang sedang aktif di Login
+    // DETEKSI ROLE DARI DOM (Apa yang sedang ungu di layar?)
     const activeBtn = document.querySelector('#login-form .role-btn.active');
-    // Pastikan membaca teks dengan aman
-    const selectedRole = activeBtn.innerText.toLowerCase().includes('mitra') ? 'mitra' : 'talenta';
+    // Ambil teksnya, jadikan huruf kecil (mitra / talenta)
+    const selectedRole = activeBtn.innerText.toLowerCase().trim(); 
 
     if(!email || !pass) return alert("Isi email dan password!");
 
@@ -57,9 +44,9 @@ async function handleLogin() {
         const data = await res.json();
 
         if (res.status === 200) {
-            // Validasi: Apakah role di DB sama dengan tombol yang dipilih?
+            // VALIDASI KETAT: Cegah salah kamar
             if (data.role !== selectedRole) {
-                alert(`⛔ Akses Ditolak!\n\nAkun ini terdaftar sebagai "${data.role.toUpperCase()}", tapi Anda mencoba masuk lewat menu "${selectedRole.toUpperCase()}".\n\nSilakan klik tombol "${data.role.toUpperCase()}" di atas kolom email.`);
+                alert(`⛔ Akses Ditolak!\n\nAkun ini terdaftar sebagai "${data.role.toUpperCase()}", tapi Anda memilih "${selectedRole.toUpperCase()}".\n\nSilakan klik tombol yang benar.`);
                 return; 
             }
 
@@ -86,11 +73,12 @@ async function handleRegister() {
     const email = document.getElementById('reg-email').value;
     const pass = document.getElementById('reg-pass').value;
     
-    // Gunakan variabel global registerRole
-    const role = registerRole; 
+    // DETEKSI ROLE DARI FORM REGISTER
+    const activeBtn = document.querySelector('#register-form .role-btn.active');
+    const role = activeBtn.innerText.toLowerCase().trim();
 
     if(!nama || !email || !pass) {
-        return alert("Mohon lengkapi Nama, Email, dan Password!");
+        return alert("Mohon lengkapi semua data!");
     }
 
     const btn = document.querySelector('#register-form .main-btn');
@@ -113,10 +101,10 @@ async function handleRegister() {
         const data = await res.json();
 
         if (res.status === 200) {
-            alert(`✅ Pendaftaran Sebagai ${role.toUpperCase()} Berhasil! Silakan Login.`);
+            alert(`✅ Berhasil Daftar sebagai ${role.toUpperCase()}! Silakan Login.`);
             toggleAuth('login');
         } else {
-            alert("❌ Gagal: " + (data.error || "Email mungkin sudah dipakai."));
+            alert("❌ Gagal: " + (data.error || "Email sudah terdaftar."));
         }
     } catch(e) { 
         alert("Error koneksi: " + e); 
@@ -200,7 +188,6 @@ async function loadMitraRealData() {
         const res = await fetch(`/.netlify/functions/getMitraData?id=${currentUser.id}`);
         const data = await res.json();
 
-        // Proyek
         const projContainer = document.getElementById('mitra-active-projects');
         if(data.projects.length === 0) projContainer.innerHTML = "<p style='color:white'>Belum ada proyek.</p>";
         else {
@@ -214,7 +201,6 @@ async function loadMitraRealData() {
             `).join('');
         }
 
-        // Pelamar
         const appContainer = document.getElementById('mitra-applicant-list');
         if(data.applicants.length === 0) appContainer.innerHTML = "<p style='color:white'>Belum ada pelamar pending.</p>";
         else {

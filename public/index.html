@@ -39,8 +39,8 @@
             <div id="login-form" class="auth-box">
                 <h2>Login</h2>
                 <div class="role-switch">
-                    <button class="role-btn active" onclick="setLoginRole('mitra')">Mitra</button>
-                    <button class="role-btn" onclick="setLoginRole('talenta')">Talenta</button>
+                    <button class="role-btn active" onclick="toggleRole(this)">Mitra</button>
+                    <button class="role-btn" onclick="toggleRole(this)">Talenta</button>
                 </div>
                 <input type="email" id="login-email" placeholder="Email">
                 <input type="password" id="login-pass" placeholder="Password">
@@ -50,11 +50,10 @@
 
             <div id="register-form" class="auth-box hidden">
                 <h2>Daftar Akun Baru</h2>
-                
                 <label style="font-size:12px; color:#666;">Saya mendaftar sebagai:</label>
                 <div class="role-switch" id="reg-role-switch">
-                    <button class="role-btn active" onclick="setRegisterRole('mitra')">Mitra</button>
-                    <button class="role-btn" onclick="setRegisterRole('talenta')">Talenta</button>
+                    <button class="role-btn active" onclick="toggleRole(this)">Mitra</button>
+                    <button class="role-btn" onclick="toggleRole(this)">Talenta</button>
                 </div>
 
                 <input type="text" id="reg-name" placeholder="Nama Lengkap">
