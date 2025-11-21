@@ -27,10 +27,14 @@ function updateProfileUI() {
     document.getElementById('preview-img').src = userAvatarUrl;
 }
 
+function handleLogout() { location.reload(); }
+
 // === 2. DASHBOARD ===
 function initDashboard() {
     document.getElementById('welcome-msg').innerText = `Hallo, ${currentUser.nama}!`;
-    loadNotifications(); // LOAD NOTIFIKASI
+    
+    // PENTING: Load Notifikasi setiap kali masuk dashboard
+    loadNotifications();
 
     if(currentUser.role === 'mitra') {
         document.getElementById('menu-academy').style.display = 'none';
@@ -45,7 +49,35 @@ function initDashboard() {
     }
 }
 
-// === 3. FITUR MITRA (TERIMA/TOLAK & HAPUS) ===
+// === 3. LOGIKA NOTIFIKASI (PERBAIKAN UTAMA) ===
+async function loadNotifications() {
+    const badge = document.getElementById('notif-badge');
+    const list = document.getElementById('notif-list');
+    
+    try {
+        const res = await fetch(`/.netlify/functions/getNotifications?user_id=${currentUser.id}`);
+        const data = await res.json();
+        
+        // Update Angka Lonceng
+        badge.innerText = data.length;
+        
+        // Render Dropdown Notifikasi
+        if(data.length === 0) {
+            list.innerHTML = "<div class='empty-notif'>Tidak ada notifikasi</div>";
+        } else {
+            list.innerHTML = data.map(n => `
+                <div style="padding: 10px; border-bottom:1px solid #eee; font-size: 12px; color: ${n.type === 'success' ? 'green' : 'red'}; background: ${n.read ? 'white' : '#f9f9f9'}">
+                    ${n.message}
+                    <div style="font-size:10px; color:#aaa; margin-top:2px;">${new Date(n.created_at).toLocaleDateString()}</div>
+                </div>
+            `).join('');
+        }
+    } catch (e) { console.log("Gagal load notif"); }
+}
+
+function toggleNotif() { document.getElementById('notif-list').classList.toggle('show'); }
+
+// === 4. FITUR MITRA (REAL DATA) ===
 async function loadMitraRealData() {
     document.getElementById('mitra-active-projects').innerHTML = "<p style='color:white'>Loading...</p>";
     document.getElementById('mitra-applicant-list').innerHTML = "<p style='color:white'>Loading...</p>";
@@ -54,7 +86,7 @@ async function loadMitraRealData() {
         const res = await fetch(`/.netlify/functions/getMitraData?id=${currentUser.id}`);
         const data = await res.json();
 
-        // A. Proyek Sendiri
+        // Proyek Sendiri
         const projContainer = document.getElementById('mitra-active-projects');
         if(data.projects.length === 0) projContainer.innerHTML = "<p style='color:white'>Belum ada proyek.</p>";
         else {
@@ -68,7 +100,7 @@ async function loadMitraRealData() {
             `).join('');
         }
 
-        // B. Pelamar
+        // Pelamar
         const appContainer = document.getElementById('mitra-applicant-list');
         if(data.applicants.length === 0) appContainer.innerHTML = "<p style='color:white'>Belum ada pelamar pending.</p>";
         else {
@@ -89,37 +121,26 @@ async function loadMitraRealData() {
     } catch(e) { console.log(e); }
 }
 
-// LOGIKA TERIMA/TOLAK
 async function processApplicant(appId, action, talentaId, projectTitle) {
     if(!confirm(`Yakin ingin ${action} pelamar ini?`)) return;
     try {
         const res = await fetch('/.netlify/functions/handleRequest', {
             method: 'POST',
-            body: JSON.stringify({ 
-                app_id: appId, action: action, 
-                mitra_id: currentUser.id, talenta_id: talentaId, project_title: projectTitle 
-            })
+            body: JSON.stringify({ app_id: appId, action: action, mitra_id: currentUser.id, talenta_id: talentaId, project_title: projectTitle })
         });
         if(res.status === 200) {
             alert("Berhasil diproses!");
-            loadMitraRealData(); // Refresh agar kartu hilang
-            loadNotifications(); // Refresh notif
+            loadMitraRealData();
+            loadNotifications(); // Refresh Notif
         }
     } catch(e) { alert("Gagal proses"); }
 }
 
-// LOGIKA HAPUS PROYEK
 async function deleteProject(projId) {
     if(!confirm("Hapus proyek ini? Semua data pelamar juga akan terhapus.")) return;
     try {
-        const res = await fetch('/.netlify/functions/deleteProject', {
-            method: 'POST',
-            body: JSON.stringify({ id: projId })
-        });
-        if(res.status === 200) {
-            alert("Proyek Terhapus!");
-            loadMitraRealData();
-        }
+        const res = await fetch('/.netlify/functions/deleteProject', { method: 'POST', body: JSON.stringify({ id: projId }) });
+        if(res.status === 200) { alert("Proyek Terhapus!"); loadMitraRealData(); }
     } catch(e) { alert("Gagal hapus"); }
 }
 
@@ -141,25 +162,38 @@ async function publishProject() {
     } catch (e) { alert("Gagal"); }
 }
 
-// === 4. FITUR TALENTA ===
+// === 5. FITUR TALENTA (PERBAIKAN: HIDE APPLY UTK MITRA) ===
 async function loadTalentaProjects() {
     const container = document.getElementById('talenta-project-list');
     const allContainer = document.getElementById('all-project-list');
-    container.innerHTML = "<p style='color:white'>Loading...</p>";
-    if(allContainer) allContainer.innerHTML = "<p style='color:white'>Loading...</p>";
+    const loading = "<p style='color:white'>Loading...</p>";
+    if(container) container.innerHTML = loading;
+    if(allContainer) allContainer.innerHTML = loading;
 
     try {
         const res = await fetch('/.netlify/functions/getProjects');
         const data = await res.json();
-        const cards = data.map(p => `
+
+        const cards = data.map(p => {
+            // LOGIKA: Jika user adalah MITRA, jangan tampilkan tombol Apply
+            let buttonHtml = '';
+            if (currentUser.role === 'mitra') {
+                buttonHtml = `<button class="main-btn" style="background:#ccc; cursor:not-allowed; margin-top:10px;" disabled>Mode Mitra</button>`;
+            } else {
+                buttonHtml = `<button class="main-btn" onclick="applyProject(${p.id})" style="margin-top:10px;">Apply</button>`;
+            }
+
+            return `
             <div class="card-item">
                 <h4>${p.judul}</h4>
                 <span style="background:#eee; padding:5px; border-radius:5px; font-size:12px;">${p.kategori}</span>
                 <h4 style="color:purple; margin-top:10px;">Rp ${parseInt(p.budget).toLocaleString()}</h4>
-                <button class="main-btn" onclick="applyProject(${p.id})" style="margin-top:10px;">Apply</button>
+                ${buttonHtml}
             </div>
-        `).join('');
-        container.innerHTML = cards;
+            `;
+        }).join('');
+
+        if(container) container.innerHTML = cards;
         if(allContainer) allContainer.innerHTML = cards;
     } catch (e) { console.log(e); }
 }
@@ -177,7 +211,7 @@ async function applyProject(pId) {
     } catch(e) { alert("Error"); }
 }
 
-// === 5. FORUM (FIX REPLY) ===
+// === 6. FORUM & LAINNYA ===
 async function loadForum() {
     const container = document.getElementById('forum-list-container');
     container.innerHTML = "<p style='color:white'>Memuat...</p>";
@@ -187,54 +221,33 @@ async function loadForum() {
         container.innerHTML = data.map(post => `
             <div class="forum-card" style="background:rgba(255,255,255,0.1); padding:15px; border-radius:10px; margin-bottom:15px;">
                 <div style="display:flex; gap:10px;">
-                    <img src="${post.user_avatar || 'images/avatar.png'}" style="width:40px; height:40px; border-radius:50%;">
+                    <img src="${(post.user_avatar && post.user_avatar.length > 10) ? post.user_avatar : 'images/avatar.png'}" style="width:40px; height:40px; border-radius:50%;">
                     <div style="width:100%">
                         <h4 style="color:white; margin-bottom:5px;">${post.user_name} <small>(${post.user_role})</small></h4>
                         <p style="color:white;">${post.text}</p>
                         <button onclick="toggleReplyBox(${post.id})" style="background:none; border:none; color:#ccc; cursor:pointer; font-size:12px; margin-top:5px;"><i class="fas fa-reply"></i> Balas</button>
-                        
                         <div id="reply-box-${post.id}" class="hidden" style="margin-top:10px;">
                             <input type="text" id="reply-input-${post.id}" placeholder="Tulis balasan..." style="width:70%; padding:5px; color:black;">
                             <button onclick="submitReply(${post.id})" style="padding:5px 10px; background:white; color:purple; border:none; cursor:pointer;">Kirim</button>
                         </div>
-                        
-                        ${post.replies ? post.replies.map(r => `
-                            <div class="reply-box"><strong style="color:white; font-size:12px;">${r.user}</strong><p style="color:rgba(255,255,255,0.8); font-size:13px;">${r.text}</p></div>
-                        `).join('') : ''}
+                        ${post.replies ? post.replies.map(r => `<div class="reply-box"><strong style="color:white; font-size:12px;">${r.user}</strong><p style="color:rgba(255,255,255,0.8); font-size:13px;">${r.text}</p></div>`).join('') : ''}
                     </div>
                 </div>
             </div>
         `).join('');
     } catch (e) { console.log(e); }
 }
-
 function toggleReplyBox(id) { document.getElementById(`reply-box-${id}`).classList.toggle('hidden'); }
-
 async function submitReply(forumId) {
     const text = document.getElementById(`reply-input-${forumId}`).value;
     if(!text) return;
-    try {
-        await fetch('/.netlify/functions/replyForum', {
-            method: 'POST',
-            body: JSON.stringify({ forum_id: forumId, user: currentUser.nama, text: text })
-        });
-        loadForum(); // Refresh
-    } catch(e) { alert("Gagal balas"); }
+    try { await fetch('/.netlify/functions/replyForum', { method: 'POST', body: JSON.stringify({ forum_id: forumId, user: currentUser.nama, text: text }) }); loadForum(); } catch(e) { alert("Gagal balas"); }
 }
-
 async function addForumPost() {
     const text = document.getElementById('forum-input').value;
     if(!text) return;
     await fetch('/.netlify/functions/forum', { method: 'POST', body: JSON.stringify({ user_name: currentUser.nama, user_role: currentUser.role, user_avatar: userAvatarUrl, text: text }) });
     document.getElementById('forum-input').value = ""; loadForum();
-}
-
-// === 6. NOTIFIKASI (Database) ===
-async function loadNotifications() {
-    // Kita ambil notifikasi dari tabel 'notifications' untuk user ini
-    // (Ini butuh endpoint baru, tapi kita bisa simulasi sebentar atau buat endpointnya nanti)
-    // Untuk sekarang kita pakai alert real-time dari action saja.
-    // Jika ingin fitur penuh, perlu endpoint getNotification.js
 }
 
 // === UTILS ===
@@ -244,7 +257,6 @@ function toggleAuth(mode) { if(mode === 'register') { document.getElementById('l
 function handleRegister() { alert("Gunakan login akun demo dulu."); }
 function navigate(page) { document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden')); let tId = 'view-' + page; if(page==='dashboard') tId = currentUser.role==='mitra'?'view-dashboard-mitra':'view-dashboard-talenta'; else if(page==='forum') loadForum(); else if(page==='proyek') loadTalentaProjects(); document.getElementById(tId).classList.remove('hidden'); }
 function selectCategory(el, name) { document.querySelectorAll('.cat-item').forEach(e => { e.classList.remove('active'); e.classList.add('dimmed'); }); el.classList.remove('dimmed'); el.classList.add('active'); }
-function toggleNotif() { document.getElementById('notif-list').classList.toggle('show'); }
 function handleLogout() { location.reload(); }
 function handleSearch() {}
 function previewProfile(e) { const reader = new FileReader(); reader.onloadend=async()=>{userAvatarUrl=reader.result; updateProfileUI(); await fetch('/.netlify/functions/updateProfile', {method:'POST',body:JSON.stringify({user_id:currentUser.id, avatar:userAvatarUrl})})}; reader.readAsDataURL(e.target.files[0]); }
