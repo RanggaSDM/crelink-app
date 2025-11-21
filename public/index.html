@@ -35,23 +35,32 @@
             <div class="logo-area">
                 <img src="images/logo-crelink.png" alt="CreLink Logo" style="height: 50px; margin-bottom: 20px;">
             </div>
+
             <div id="login-form" class="auth-box">
                 <h2>Login</h2>
                 <div class="role-switch">
-                    <button class="role-btn active" onclick="setAuthRole('mitra')">Mitra</button>
-                    <button class="role-btn" onclick="setAuthRole('talenta')">Talenta</button>
+                    <button class="role-btn active" onclick="setLoginRole('mitra')">Mitra</button>
+                    <button class="role-btn" onclick="setLoginRole('talenta')">Talenta</button>
                 </div>
                 <input type="email" id="login-email" placeholder="Email">
                 <input type="password" id="login-pass" placeholder="Password">
                 <button onclick="handleLogin()" class="main-btn">MASUK KE DASHBOARD</button>
                 <p>Belum Punya Akun? <span onclick="toggleAuth('register')" class="link-text">Daftar Sekarang!</span></p>
             </div>
+
             <div id="register-form" class="auth-box hidden">
-                <h2>Daftar</h2>
+                <h2>Daftar Akun Baru</h2>
+                
+                <label style="font-size:12px; color:#666;">Saya mendaftar sebagai:</label>
+                <div class="role-switch" id="reg-role-switch">
+                    <button class="role-btn active" onclick="setRegisterRole('mitra')">Mitra</button>
+                    <button class="role-btn" onclick="setRegisterRole('talenta')">Talenta</button>
+                </div>
+
                 <input type="text" id="reg-name" placeholder="Nama Lengkap">
                 <input type="email" id="reg-email" placeholder="Email">
                 <input type="password" id="reg-pass" placeholder="Password">
-                <button onclick="handleRegister()" class="main-btn">DAFTAR</button>
+                <button onclick="handleRegister()" class="main-btn">DAFTAR SEKARANG</button>
                 <p>Sudah Punya Akun? <span onclick="toggleAuth('login')" class="link-text">Login di sini</span></p>
             </div>
         </div>
@@ -79,7 +88,6 @@
                     <input type="text" placeholder="Search..." onkeyup="handleSearch(this.value)">
                 </div>
                 <div class="user-actions">
-                    
                     <div class="notif-wrapper" onclick="toggleNotif(event)">
                         <i class="fas fa-bell"></i>
                         <span class="badge" id="notif-badge" style="display:none;">0</span>
@@ -87,7 +95,6 @@
                             <div class="empty-notif">Tidak ada notifikasi</div>
                         </div>
                     </div>
-
                     <img src="images/avatar.png" alt="Profile" id="header-profile-pic">
                 </div>
             </header>

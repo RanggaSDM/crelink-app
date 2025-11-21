@@ -1,8 +1,33 @@
 // === STATE GLOBAL ===
 let currentUser = null; 
 let userAvatarUrl = "images/avatar.png"; 
+let registerRole = 'mitra'; // Default role saat daftar
 
-// === 1. AUTHENTICATION (LOGIN & REGISTER) ===
+// === 1. AUTHENTICATION ===
+
+// Fungsi memilih role saat REGISTER
+function setRegisterRole(role) {
+    registerRole = role;
+    // Update tampilan tombol di form register
+    const btns = document.querySelectorAll('#reg-role-switch .role-btn');
+    btns.forEach(btn => btn.classList.remove('active'));
+    
+    // Cari tombol yang sesuai teks-nya dan aktifkan
+    btns.forEach(btn => {
+        if(btn.innerText.toLowerCase() === role) btn.classList.add('active');
+    });
+}
+
+// Fungsi memilih role saat LOGIN (Hanya visual, tidak kirim ke backend karena login pakai email)
+function setLoginRole(role) {
+    // Cuma visual biar user tau dia login sebagai apa
+    const btns = document.querySelectorAll('#login-form .role-switch .role-btn');
+    btns.forEach(b => b.classList.remove('active'));
+    
+    btns.forEach(btn => {
+        if(btn.innerText.toLowerCase() === role) btn.classList.add('active');
+    });
+}
 
 async function handleLogin() {
     const email = document.getElementById('login-email').value;
@@ -25,7 +50,6 @@ async function handleLogin() {
 
         if (res.status === 200) {
             currentUser = data;
-            // Cek apakah user punya avatar khusus, kalau tidak pakai default
             userAvatarUrl = (currentUser.avatar && currentUser.avatar.length > 10) ? currentUser.avatar : "images/avatar.png";
             
             document.getElementById('auth-section').classList.add('hidden');
@@ -43,19 +67,13 @@ async function handleLogin() {
     }
 }
 
-// FITUR REGISTER (SUDAH AKTIF)
 async function handleRegister() {
     const nama = document.getElementById('reg-name').value;
     const email = document.getElementById('reg-email').value;
     const pass = document.getElementById('reg-pass').value;
 
-    // Deteksi Role berdasarkan tombol yang sedang ungu (active)
-    const activeBtn = document.querySelector('.role-btn.active');
-    // Jika tombol Mitra aktif, role = mitra. Jika tidak, talenta.
-    // Kita cek innerText-nya.
-    const roleText = activeBtn ? activeBtn.innerText.toLowerCase() : 'talenta'; 
-    // Pastikan role valid (mitra/talenta)
-    const role = roleText.includes('mitra') ? 'mitra' : 'talenta';
+    // GUNAKAN registerRole YANG DIPILIH USER
+    const role = registerRole; 
 
     if(!nama || !email || !pass) {
         return alert("Mohon lengkapi Nama, Email, dan Password!");
@@ -74,15 +92,15 @@ async function handleRegister() {
                 nama: nama,
                 email: email,
                 password: pass,
-                role: role
+                role: role // Kirim role yang benar
             })
         });
         
         const data = await res.json();
 
         if (res.status === 200) {
-            alert("✅ Pendaftaran Berhasil! Silakan Login.");
-            toggleAuth('login'); // Pindah ke form login
+            alert(`✅ Pendaftaran Sebagai ${role.toUpperCase()} Berhasil! Silakan Login.`);
+            toggleAuth('login');
         } else {
             alert("❌ Gagal: " + (data.error || "Email mungkin sudah dipakai."));
         }
@@ -234,7 +252,6 @@ async function publishProject() {
     const category = activeCat ? activeCat.innerText.trim() : "General";
     if(!title || !budget) return alert("Lengkapi Data!");
 
-    // Tombol loading state
     const btn = document.querySelector('.publish-btn');
     btn.innerText = "Publishing...";
     btn.disabled = true;
@@ -245,7 +262,6 @@ async function publishProject() {
             body: JSON.stringify({ judul: title, kategori: category, budget, deadline: date, mitra_id: currentUser.id })
         });
         alert("Proyek Terbit!");
-        // Reset Form
         document.getElementById('proj-title').value = "";
         document.getElementById('proj-budget').value = "";
         document.getElementById('proj-desc').value = "";
@@ -342,16 +358,8 @@ async function addForumPost() {
     document.getElementById('forum-input').value = ""; loadForum();
 }
 
-// === UTILS & UI HANDLERS ===
+// === UTILS ===
 function goToLogin() { document.getElementById('landing-page').classList.add('hidden'); document.getElementById('auth-section').classList.remove('hidden'); }
-
-function setAuthRole(role) { 
-    document.querySelectorAll('.role-btn').forEach(b => b.classList.remove('active')); 
-    const btns = document.querySelectorAll('.role-btn'); 
-    // Logic simple: kalau klik mitra (btn[0]), aktifkan btn[0].
-    if(role === 'mitra') btns[0].classList.add('active'); 
-    else btns[1].classList.add('active'); 
-}
 
 function toggleAuth(mode) { 
     if(mode === 'register') { 
@@ -365,26 +373,16 @@ function toggleAuth(mode) {
 
 function navigate(page) { 
     document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden')); 
-    
     let tId = 'view-' + page; 
-    if(page === 'dashboard') {
-        tId = currentUser.role === 'mitra' ? 'view-dashboard-mitra' : 'view-dashboard-talenta';
-    } else if(page === 'forum') {
-        loadForum(); 
-    } else if(page === 'proyek') {
-        loadTalentaProjects(); 
-    }
-    
+    if(page === 'dashboard') { tId = currentUser.role === 'mitra' ? 'view-dashboard-mitra' : 'view-dashboard-talenta'; } 
+    else if(page === 'forum') { loadForum(); } 
+    else if(page === 'proyek') { loadTalentaProjects(); }
     document.getElementById(tId).classList.remove('hidden'); 
 }
 
 function selectCategory(el, name) { 
-    document.querySelectorAll('.cat-item').forEach(e => { 
-        e.classList.remove('active'); 
-        e.classList.add('dimmed'); 
-    }); 
-    el.classList.remove('dimmed'); 
-    el.classList.add('active'); 
+    document.querySelectorAll('.cat-item').forEach(e => { e.classList.remove('active'); e.classList.add('dimmed'); }); 
+    el.classList.remove('dimmed'); el.classList.add('active'); 
 }
 
 function handleSearch(val) { console.log("Search: ", val); }
@@ -394,11 +392,7 @@ function previewProfile(e) {
     reader.onloadend = async () => {
         userAvatarUrl = reader.result; 
         updateProfileUI(); 
-        // Auto save ke DB saat ganti foto
-        await fetch('/.netlify/functions/updateProfile', {
-            method: 'POST',
-            body: JSON.stringify({ user_id: currentUser.id, avatar: userAvatarUrl })
-        });
+        await fetch('/.netlify/functions/updateProfile', { method:'POST', body:JSON.stringify({ user_id: currentUser.id, avatar: userAvatarUrl }) });
     }; 
     reader.readAsDataURL(e.target.files[0]); 
 }
@@ -406,12 +400,9 @@ function previewProfile(e) {
 async function saveSettings() { alert("Profil berhasil diperbarui!"); }
 function openVideo(url) { window.open(url, '_blank'); }
 
-// TUTUP NOTIFIKASI JIKA KLIK DI LUAR
 window.onclick = function(event) {
     if (!event.target.closest('.notif-wrapper')) {
         const dropdown = document.getElementById('notif-list');
-        if (dropdown && dropdown.classList.contains('show')) {
-            dropdown.classList.remove('show');
-        }
+        if (dropdown && dropdown.classList.contains('show')) { dropdown.classList.remove('show'); }
     }
 }
