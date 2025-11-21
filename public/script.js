@@ -32,7 +32,7 @@ function handleLogout() { location.reload(); }
 // === 2. DASHBOARD ===
 function initDashboard() {
     document.getElementById('welcome-msg').innerText = `Hallo, ${currentUser.nama}!`;
-    loadNotifications(); // LOAD NOTIFIKASI
+    loadNotifications(); 
 
     if(currentUser.role === 'mitra') {
         document.getElementById('menu-academy').style.display = 'none';
@@ -47,7 +47,7 @@ function initDashboard() {
     }
 }
 
-// === 3. LOGIKA NOTIFIKASI (LENGKAP) ===
+// === 3. LOGIKA NOTIFIKASI ===
 async function loadNotifications() {
     const badge = document.getElementById('notif-badge');
     const list = document.getElementById('notif-list');
@@ -74,7 +74,7 @@ async function loadNotifications() {
 }
 
 function toggleNotif(event) {
-    event.stopPropagation();
+    event.stopPropagation(); // Mencegah klik tembus
     document.getElementById('notif-list').classList.toggle('show');
 }
 
@@ -87,7 +87,7 @@ async function deleteNotif(e, id) {
     } catch(e) { alert("Gagal hapus"); }
 }
 
-// === 4. FITUR MITRA (REAL DATA) ===
+// === 4. FITUR MITRA ===
 async function loadMitraRealData() {
     document.getElementById('mitra-active-projects').innerHTML = "<p style='color:white'>Loading...</p>";
     document.getElementById('mitra-applicant-list').innerHTML = "<p style='color:white'>Loading...</p>";
